@@ -13,7 +13,7 @@ namespace CollisionDetectionExample
 
         public bool IsActive { get; private set; } = true;
 
-        public Rectangle Bounds => new Rectangle((int)MathF.Round(position.X), (int)MathF.Round(position.X), Size, Size);
+        public Rectangle Bounds => new Rectangle((int)MathF.Round(position.X), (int)MathF.Round(position.Y), Size, Size);
 
         public Bullet(Vector2 center, Vector2 direction)
         {
