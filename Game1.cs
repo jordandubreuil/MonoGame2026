@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
 
 namespace CollisionDetectionExample
 {
@@ -12,6 +13,8 @@ namespace CollisionDetectionExample
         Texture2D whitePixel;
         Player player;
         Wall[] walls;
+        private readonly Shooter shooter = new Shooter();
+        private readonly List<Bullet> bullets = new List<Bullet>();
 
 
         public Game1()
@@ -61,6 +64,23 @@ namespace CollisionDetectionExample
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             player.Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds);
 
+            //Spawn a bullet
+            Bullet shot = shooter.Update(deltaTime, player.Bounds.Center.ToVector2());
+            if(shot != null)
+            {
+                bullets.Add(shot);
+            }
+
+            //Iterate through bullets backward
+            for(int i =  bullets.Count - 1; i >=0; i--)
+            {
+                bullets[i].Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds);
+                if (!bullets[i].IsActive)
+                {
+                    bullets.RemoveAt(i);
+                }
+            }
+
             base.Update(gameTime);
         }
 
@@ -74,6 +94,11 @@ namespace CollisionDetectionExample
             foreach (Wall wall in walls)
             {
                 wall.Draw(_spriteBatch, whitePixel);
+            }
+
+            foreach(Bullet bullet in bullets)
+            {
+                bullet.Draw(_spriteBatch, whitePixel);
             }
 
             _spriteBatch.End();
