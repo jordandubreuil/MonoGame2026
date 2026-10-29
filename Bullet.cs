@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -27,9 +28,9 @@ namespace CollisionDetectionExample
         }
 
 
-        public void Update(float deltaTime, Wall[] walls, Rectangle playeArea) 
+        public bool Update(float deltaTime, Wall[] walls, Rectangle playeArea, List<Enemy> enemies) 
         {
-            if (!IsActive) return;
+            if (!IsActive) return false;
 
             Vector2 movement = velocity * deltaTime;
 
@@ -44,7 +45,7 @@ namespace CollisionDetectionExample
                 if (!Bounds.Intersects(playeArea))
                 {
                     IsActive = false;
-                    return;
+                    return false;
                 }
 
                 foreach(Wall wall in walls)
@@ -52,10 +53,21 @@ namespace CollisionDetectionExample
                     if (Bounds.Intersects(wall.Bounds))
                     {
                         IsActive = false;
-                        return;
+                        return false;
+                    }
+                }
+
+                //Check for collision with enemies
+                foreach (var enemy in enemies)
+                {
+                    if(enemy.State != EnemyState.Dead && Bounds.Intersects(enemy.Bounds))
+                    {
+                        IsActive = false;
+                        return enemy.TakeHit();
                     }
                 }
             }
+            return false;
         }
 
         public void Draw(SpriteBatch spriteBatch, Texture2D whitePixel)

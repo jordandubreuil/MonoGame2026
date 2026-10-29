@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
 using System.Collections.Generic;
 
 namespace CollisionDetectionExample
@@ -11,8 +13,13 @@ namespace CollisionDetectionExample
         private SpriteBatch _spriteBatch;
 
         Texture2D whitePixel;
+        Song backgroudMusic;
+        SoundEffect gunshotSound;
+        SoundEffect explosionSound;
         Player player;
         Wall[] walls;
+        Enemy enemy;
+        readonly List<Enemy> enemies = new List<Enemy>();
         private readonly Shooter shooter = new Shooter();
         private readonly List<Bullet> bullets = new List<Bullet>();
 
@@ -51,8 +58,25 @@ namespace CollisionDetectionExample
            whitePixel.SetData(new Color[] { Color.White });
             Texture2D idleSheet = Content.Load<Texture2D>("Player Idle 48x48");
             Texture2D runSheet = Content.Load<Texture2D>("player run 48x48");
+            Texture2D deathSheet = Content.Load<Texture2D>("Player Death 64x64");
             player.IdleAnimation = new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f, true);
             player.RunAnimation = new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f, true);
+
+            enemy = new Enemy(new Vector2(600, 300),
+                new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f),
+                new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f),
+                new SpriteAnimation(deathSheet, 48, 48, 0, 10, 10f, loop: false),
+                hitsToKill: 3)
+            { DetectionRange = 200f, Speed = 85f};
+
+            enemies.Add(enemy);
+
+            backgroudMusic = Content.Load<Song>("FutureAmbient_2");
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Volume = 0.25f;
+            MediaPlayer.Play(backgroudMusic);
+            gunshotSound = Content.Load<SoundEffect>("bullet");
+            explosionSound = Content.Load<SoundEffect>("explosion");
         }
 
         protected override void Update(GameTime gameTime)
@@ -63,18 +87,24 @@ namespace CollisionDetectionExample
             // TODO: Add your update logic here
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             player.Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds);
+            enemy.Update(deltaTime, player.Bounds, walls);
 
             //Spawn a bullet
             Bullet shot = shooter.Update(deltaTime, player.Bounds.Center.ToVector2());
             if(shot != null)
             {
                 bullets.Add(shot);
+                gunshotSound.Play(volume:0.5f, pitch:0, pan:0);
             }
 
             //Iterate through bullets backward
             for(int i =  bullets.Count - 1; i >=0; i--)
             {
-                bullets[i].Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds);
+                bool hitEnemy = bullets[i].Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds, enemies);
+                if (hitEnemy)
+                {
+                    explosionSound.Play(volume: 0.5f, pitch: 0, pan: 0);
+                }
                 if (!bullets[i].IsActive)
                 {
                     bullets.RemoveAt(i);
@@ -90,6 +120,7 @@ namespace CollisionDetectionExample
 
             _spriteBatch.Begin();
             player.Draw(_spriteBatch, whitePixel);
+            enemy.Draw(_spriteBatch, whitePixel);
             //draw the walls
             foreach (Wall wall in walls)
             {
