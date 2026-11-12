@@ -173,9 +173,9 @@ namespace CollisionDetectionExample
                     directionChangeTimer -= deltaTime;
                     if (directionChangeTimer <= 0)
                     {
-                        movement = wanderDirection * Speed * deltaTime;
-
+                        SetRandomDirection();
                     }
+                    movement = wanderDirection * Speed * deltaTime;
                     break;
             }
 

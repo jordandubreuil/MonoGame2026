@@ -189,6 +189,7 @@ namespace CollisionDetectionExample
             //}
 
             //Window.Title = $"Wave: {spawner.WaveNumber} : Wave Size: {spawner.WaveSize}";
+            Window.Title = $"blue is patrol, orange is chase, purple is waypoint, yellow is wanderer";
 
             base.Update(gameTime);
         }
