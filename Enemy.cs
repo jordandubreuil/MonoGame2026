@@ -10,8 +10,7 @@ namespace CollisionDetectionExample
     public enum EnemyMovementType { BackAndForth, Chase, Waypoints, Wander}
     internal class Enemy
     {
-        public const int Size = 64
-            ;
+        public const int Size = 64;
         private Vector2 position;
         readonly SpriteAnimation idleAnimation;
         readonly SpriteAnimation chaseAnimation;
@@ -24,6 +23,8 @@ namespace CollisionDetectionExample
         float directionChangeTimer;
         Vector2[] waypoints;
         int waypointIndex = 1;
+        Vector2 wanderDirection;
+        Random random = new Random();
 
 
 
@@ -167,6 +168,15 @@ namespace CollisionDetectionExample
                     }
 
                     break;
+
+                case EnemyMovementType.Wander:
+                    directionChangeTimer -= deltaTime;
+                    if (directionChangeTimer <= 0)
+                    {
+                        movement = wanderDirection * Speed * deltaTime;
+
+                    }
+                    break;
             }
 
             Vector2 oldPosition = position;
@@ -177,12 +187,16 @@ namespace CollisionDetectionExample
                 {
                     patrolDirection = movement.X > 0 ? -1 : 1;
                 }
+                if(MovementType == EnemyMovementType.Wander)
+                {
+                    SetRandomDirection();
+                }
                
             }
 
             if(MovementType == EnemyMovementType.Waypoints && waypoints.Length > 0 && Vector2.Distance(position, waypoints[waypointIndex]) < 0.01f)
             {
-                waypointIndex = (waypointIndex * 1) % waypoints.Length;
+                waypointIndex = (waypointIndex + 1) % waypoints.Length;
             }
 
             Vector2 actualMovement = position - oldPosition;
@@ -206,6 +220,13 @@ namespace CollisionDetectionExample
                 chaseAnimation.Update(deltaTime);
             }
             
+        }
+
+        void SetRandomDirection()
+        {
+            float angle = (float)random.NextDouble() * MathHelper.TwoPi;
+            wanderDirection = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            directionChangeTimer = MathF.Max(0.1f, ChangeDirectionInterval);
         }
 
         bool MovePatrol(Vector2 movement, Rectangle playerBounds, Wall[] walls)

@@ -115,6 +115,11 @@ namespace CollisionDetectionExample
 
             enemies.Add(waypoint);
 
+            //Create Wandering Enemy
+            Enemy wanderer = CreateEnemy(new Vector2(75, 350), EnemyMovementType.Wander, Color.Yellow);
+            wanderer.ChangeDirectionInterval = 1.5f;
+            enemies.Add(wanderer);
+
             //spawner = new EnemySpawner(idleSheet, runSheet, deathSheet)
             //{
             //    HitsToKill = 3,
