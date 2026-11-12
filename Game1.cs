@@ -100,6 +100,10 @@ namespace CollisionDetectionExample
             patrol.RightBound = 650;
             enemies.Add(patrol);
 
+            //Create Chase Enemy
+            Enemy chase = CreateEnemy(new Vector2(300, 250), EnemyMovementType.Chase, Color.Orange);
+            enemies.Add(chase);
+
             //spawner = new EnemySpawner(idleSheet, runSheet, deathSheet)
             //{
             //    HitsToKill = 3,

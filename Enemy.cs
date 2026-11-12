@@ -193,7 +193,8 @@ namespace CollisionDetectionExample
             for(int i = 0; i < steps; i++)
             {
                 Vector2 previous = position;
-                if(TouchesWalls(walls) || MovementArea.Contains(Bounds))
+                position.X += step.X;
+                if(TouchesWalls(walls) || !MovementArea.Contains(Bounds))
                 {
                     position = previous;
                     return true;
@@ -205,8 +206,7 @@ namespace CollisionDetectionExample
                 }
 
                 float oldY = position.Y;
-                position.Y = step.Y;
-
+                position.Y += step.Y;
                 if(TouchesWalls(walls) || !MovementArea.Contains(Bounds))
                 {
                     position.Y = oldY;
