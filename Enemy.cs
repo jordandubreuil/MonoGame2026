@@ -1,14 +1,17 @@
-﻿using System;
-using Microsoft.Xna.Framework;  
+﻿using Microsoft.Xna.Framework;  
 using Microsoft.Xna.Framework.Graphics;  
+using System;
+using System.Diagnostics;
 
 
 namespace CollisionDetectionExample
 {
     public enum EnemyState { Idle, Chase, Dead };
+    public enum EnemyMovementType { BackAndForth, Chase, Waypoints, Wander}
     internal class Enemy
     {
-        public const int Size = 64;
+        public const int Size = 64
+            ;
         private Vector2 position;
         readonly SpriteAnimation idleAnimation;
         readonly SpriteAnimation chaseAnimation;
@@ -17,16 +20,26 @@ namespace CollisionDetectionExample
         float hitFlashTime;
         const float ChaseRecheckInterval = 0.5f;
         float chaseRecheckTimer;
+        int patrolDirection = 1;
+        float directionChangeTimer;
 
         public EnemyState State { get; private set; } = EnemyState.Idle;
         public int HitsRemaining { get; private set; }
         public int MaxHits { get; }
         public bool hasFinishedDying => State == EnemyState.Dead && deathAnimation.IsFinished;
         public float DetectionRange { get; set; } = 200f;
+        public EnemyMovementType MovementType { get; }
+        public Color Tint { get; set; }
+        
+        //These are the bounds for horizontal patrolling
+        public float LeftBound { get; set; }
+        public float RightBound { get; set; }
+        public float ChangeDirectionInterval { get; set; } = 1.5f;
+        public Rectangle MovementArea { get; set; } = new Rectangle(0, 0, 800, 600);
         public float Speed { get; set; } = 85f;
         public Rectangle Bounds => new Rectangle((int)MathF.Round(position.X), (int)MathF.Round(position.Y), Size, Size);
 
-        public Enemy(Vector2 startPosition, SpriteAnimation idleAnimation, SpriteAnimation chaseAnimation, SpriteAnimation deathAnimation, int hitsToKill = 3)
+        public Enemy(Vector2 startPosition, SpriteAnimation idleAnimation, SpriteAnimation chaseAnimation, SpriteAnimation deathAnimation, int hitsToKill = 3, EnemyMovementType movementType = EnemyMovementType.Chase)
         {
             if (hitsToKill < 1) throw new ArgumentOutOfRangeException(nameof(hitsToKill));
             position = startPosition;
@@ -35,6 +48,9 @@ namespace CollisionDetectionExample
             this.deathAnimation = deathAnimation;
             MaxHits = hitsToKill;
             HitsRemaining = hitsToKill;
+            MovementType = movementType;
+            LeftBound = startPosition.X - 60;
+            RightBound = startPosition.X + 60;
         }
 
         public void Update(float deltaTime, Rectangle playerBounds, Wall[] walls)
@@ -45,6 +61,14 @@ namespace CollisionDetectionExample
             if (State == EnemyState.Dead)
             {
                 deathAnimation.Update(deltaTime);
+                return;
+            
+            }
+
+            if(MovementType != EnemyMovementType.Chase)
+            {
+                
+                UpdatePatrol(deltaTime, playerBounds, walls);
                 return;
             }
 
@@ -112,6 +136,91 @@ namespace CollisionDetectionExample
             idleAnimation.Reset();
         }
 
+        void UpdatePatrol(float deltaTime, Rectangle playerBounds, Wall[] walls)
+        {
+            Vector2 movement = Vector2.Zero;
+            switch (MovementType)
+            {
+                case EnemyMovementType.BackAndForth:
+                    if (LeftBound >= RightBound) break;
+                    if (position.X >= RightBound) patrolDirection = -1;
+                    if (position.X <= LeftBound) patrolDirection = 1;
+
+                    float targetX = patrolDirection > 0 ? RightBound : LeftBound;
+                    float distanceX = targetX - position.X;
+                    movement.X = MathF.Sign(distanceX) * MathF.Min(Speed * deltaTime, MathF.Abs(distanceX));
+                    Debug.WriteLine(movement.X);
+                    break;
+            }
+
+            Vector2 oldPosition = position;
+            bool hitWall = MovePatrol(movement, playerBounds, walls);
+            if (hitWall)
+            {
+                if(MovementType == EnemyMovementType.BackAndForth)
+                {
+                    patrolDirection = movement.X > 0 ? -1 : 1;
+                }
+            }
+
+            Vector2 actualMovement = position - oldPosition;
+            if (actualMovement.X < 0) facing = SpriteEffects.FlipHorizontally;
+            if (actualMovement.X > 0) facing = SpriteEffects.None;
+
+            EnemyState nextState = actualMovement == Vector2.Zero ? EnemyState.Idle : EnemyState.Chase;
+            if(nextState != State)
+            {
+                State = nextState;
+                if(State == EnemyState.Idle)idleAnimation.Reset();
+                else chaseAnimation.Reset();
+            }
+
+            if(State == EnemyState.Idle)
+            {
+                idleAnimation.Update(deltaTime);
+            }
+            else
+            {
+                chaseAnimation.Update(deltaTime);
+            }
+            
+        }
+
+        bool MovePatrol(Vector2 movement, Rectangle playerBounds, Wall[] walls)
+        {
+            int steps = Math.Max(1, (int)MathF.Ceiling(MathF.Max(MathF.Abs(movement.X), MathF.Abs(movement.Y)) / 4f));
+            Vector2 step = movement / steps;
+            for(int i = 0; i < steps; i++)
+            {
+                Vector2 previous = position;
+                if(TouchesWalls(walls) || MovementArea.Contains(Bounds))
+                {
+                    position = previous;
+                    return true;
+                }
+
+                if (Bounds.Intersects(playerBounds))
+                {
+                    position.X = previous.X;
+                }
+
+                float oldY = position.Y;
+                position.Y = step.Y;
+
+                if(TouchesWalls(walls) || !MovementArea.Contains(Bounds))
+                {
+                    position.Y = oldY;
+                    return true;
+                }
+
+                if (Bounds.Intersects(playerBounds))
+                {
+                    position.Y = oldY;
+                }
+            }
+            return false;
+        }
+
         //Detect if the enemy is touching walls
         bool TouchesWalls(Wall[] walls)
         {
@@ -166,13 +275,13 @@ namespace CollisionDetectionExample
             {
                 if (!deathAnimation.IsFinished)
                 {
-                    deathAnimation.Draw(spriteBatch, Bounds, Color.Orange, facing); 
+                    deathAnimation.Draw(spriteBatch, Bounds, Tint, facing); 
                 }
                 return;
             }
 
             SpriteAnimation animation = State == EnemyState.Idle ? idleAnimation : chaseAnimation;
-            animation.Draw(spriteBatch, Bounds, hitFlashTime > 0 ? Color.Red : Color.Orange, facing);
+            animation.Draw(spriteBatch, Bounds, hitFlashTime > 0 ? Color.Red : Tint, facing);
 
 
             //Health bar

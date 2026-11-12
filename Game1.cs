@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace CollisionDetectionExample
 {
@@ -13,16 +14,20 @@ namespace CollisionDetectionExample
         private SpriteBatch _spriteBatch;
 
         Texture2D whitePixel;
+        Texture2D spaceSprite;
         Song backgroudMusic;
         SoundEffect gunshotSound;
         SoundEffect explosionSound;
         Player player;
         Wall[] walls;
         Enemy enemy;
+        EnemySpawner spawner;
         readonly List<Enemy> enemies = new List<Enemy>();
         private readonly Shooter shooter = new Shooter();
         private readonly List<Bullet> bullets = new List<Bullet>();
 
+        float bgScrollX = 0f;
+        float bgScrollSpeed = 100f;
 
         public Game1()
         {
@@ -55,6 +60,7 @@ namespace CollisionDetectionExample
 
             // TODO: use this.Content to load your game content here
            whitePixel = new Texture2D(GraphicsDevice, 1, 1);
+            spaceSprite = Content.Load<Texture2D>("space");
            whitePixel.SetData(new Color[] { Color.White });
             Texture2D idleSheet = Content.Load<Texture2D>("Player Idle 48x48");
             Texture2D runSheet = Content.Load<Texture2D>("player run 48x48");
@@ -62,14 +68,45 @@ namespace CollisionDetectionExample
             player.IdleAnimation = new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f, true);
             player.RunAnimation = new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f, true);
 
-            enemy = new Enemy(new Vector2(600, 300),
+            //Single Enemy
+            //enemy = new Enemy(new Vector2(600, 300),
+            //    new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f),
+            //    new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f),
+            //    new SpriteAnimation(deathSheet, 48, 48, 0, 10, 10f, loop: false),
+            //    hitsToKill: 3)
+            //{ DetectionRange = 200f, Speed = 85f};
+
+            //enemies.Add(enemy);
+
+            Enemy CreateEnemy(Vector2 position, EnemyMovementType movementType, Color tint)
+            {
+                return new Enemy(position,
                 new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f),
                 new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f),
                 new SpriteAnimation(deathSheet, 48, 48, 0, 10, 10f, loop: false),
-                hitsToKill: 3)
-            { DetectionRange = 200f, Speed = 85f};
+                hitsToKill: 3, movementType: movementType)
+                {
+                    Tint = tint,
+                    Speed = 85f,
+                    DetectionRange = 200f,
+                    MovementArea = GraphicsDevice.Viewport.Bounds
+                };
 
-            enemies.Add(enemy);
+            }
+
+            //Create the back and forth enemy
+            Enemy patrol = CreateEnemy(new Vector2(300,10), EnemyMovementType.BackAndForth, Color.CornflowerBlue);
+            patrol.LeftBound = 280;
+            patrol.RightBound = 650;
+            enemies.Add(patrol);
+
+            //spawner = new EnemySpawner(idleSheet, runSheet, deathSheet)
+            //{
+            //    HitsToKill = 3,
+            //    DetectionRange = 200f,
+            //    EnemySpeed = 85f
+            //};
+            //spawner.Update(enemies, GraphicsDevice.Viewport.Bounds, player.Bounds, walls);
 
             backgroudMusic = Content.Load<Song>("FutureAmbient_2");
             MediaPlayer.IsRepeating = true;
@@ -87,7 +124,19 @@ namespace CollisionDetectionExample
             // TODO: Add your update logic here
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             player.Update(deltaTime, walls, GraphicsDevice.Viewport.Bounds);
-            enemy.Update(deltaTime, player.Bounds, walls);
+            //enemy.Update(deltaTime, player.Bounds, walls);
+            foreach(Enemy enemy in enemies)
+            {
+                
+                enemy.Update(deltaTime, player.Bounds, walls);
+            }
+
+            bgScrollX += bgScrollSpeed * deltaTime;
+
+            if (bgScrollX >= spaceSprite.Width)
+            {
+                bgScrollX -= spaceSprite.Width;
+            }
 
             //Spawn a bullet
             Bullet shot = shooter.Update(deltaTime, player.Bounds.Center.ToVector2());
@@ -111,6 +160,16 @@ namespace CollisionDetectionExample
                 }
             }
 
+            enemies.RemoveAll(enemy => enemy.hasFinishedDying);
+            //int previousWave = spawner.WaveNumber;
+            //spawner.Update(enemies, GraphicsDevice.Viewport.Bounds, player.Bounds, walls);
+            //if(spawner.WaveNumber != previousWave)
+            //{
+            //    bullets.Clear();
+            //}
+
+            //Window.Title = $"Wave: {spawner.WaveNumber} : Wave Size: {spawner.WaveSize}";
+
             base.Update(gameTime);
         }
 
@@ -119,8 +178,21 @@ namespace CollisionDetectionExample
             GraphicsDevice.Clear(new Color(25,30,40));
 
             _spriteBatch.Begin();
+            //Scrolling Background Example
+            float bgX = -bgScrollX;
+            _spriteBatch.Draw(spaceSprite, new Vector2(bgX, 0), Color.White);
+
+            if (bgX + spaceSprite.Width < _graphics.PreferredBackBufferWidth)
+            {
+                _spriteBatch.Draw(spaceSprite, new Vector2(bgX + spaceSprite.Width, 0), Color.White);
+            }
+
             player.Draw(_spriteBatch, whitePixel);
-            enemy.Draw(_spriteBatch, whitePixel);
+            //enemy.Draw(_spriteBatch, whitePixel);
+            foreach (Enemy enemy in enemies)
+            {
+                enemy.Draw(_spriteBatch, whitePixel);
+            }
             //draw the walls
             foreach (Wall wall in walls)
             {
