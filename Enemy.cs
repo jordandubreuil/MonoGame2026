@@ -22,6 +22,10 @@ namespace CollisionDetectionExample
         float chaseRecheckTimer;
         int patrolDirection = 1;
         float directionChangeTimer;
+        Vector2[] waypoints;
+        int waypointIndex = 1;
+
+
 
         public EnemyState State { get; private set; } = EnemyState.Idle;
         public int HitsRemaining { get; private set; }
@@ -39,7 +43,7 @@ namespace CollisionDetectionExample
         public float Speed { get; set; } = 85f;
         public Rectangle Bounds => new Rectangle((int)MathF.Round(position.X), (int)MathF.Round(position.Y), Size, Size);
 
-        public Enemy(Vector2 startPosition, SpriteAnimation idleAnimation, SpriteAnimation chaseAnimation, SpriteAnimation deathAnimation, int hitsToKill = 3, EnemyMovementType movementType = EnemyMovementType.Chase)
+        public Enemy(Vector2 startPosition, SpriteAnimation idleAnimation, SpriteAnimation chaseAnimation, SpriteAnimation deathAnimation, int hitsToKill = 3, EnemyMovementType movementType = EnemyMovementType.Chase, Vector2[] waypoints = null)
         {
             if (hitsToKill < 1) throw new ArgumentOutOfRangeException(nameof(hitsToKill));
             position = startPosition;
@@ -51,6 +55,7 @@ namespace CollisionDetectionExample
             MovementType = movementType;
             LeftBound = startPosition.X - 60;
             RightBound = startPosition.X + 60;
+            this.waypoints = waypoints == null ? Array.Empty<Vector2>() : (Vector2[])waypoints.Clone();
         }
 
         public void Update(float deltaTime, Rectangle playerBounds, Wall[] walls)
@@ -151,6 +156,17 @@ namespace CollisionDetectionExample
                     movement.X = MathF.Sign(distanceX) * MathF.Min(Speed * deltaTime, MathF.Abs(distanceX));
                     Debug.WriteLine(movement.X);
                     break;
+
+                case EnemyMovementType.Waypoints:
+                    if (waypoints.Length == 0) break;
+                    Vector2 toWaypoint = waypoints[waypointIndex] - position;
+                    float distance = toWaypoint.Length();
+                    if (distance > 0)
+                    {
+                        movement = toWaypoint / distance * MathF.Min(Speed * deltaTime, distance);
+                    }
+
+                    break;
             }
 
             Vector2 oldPosition = position;
@@ -161,6 +177,12 @@ namespace CollisionDetectionExample
                 {
                     patrolDirection = movement.X > 0 ? -1 : 1;
                 }
+               
+            }
+
+            if(MovementType == EnemyMovementType.Waypoints && waypoints.Length > 0 && Vector2.Distance(position, waypoints[waypointIndex]) < 0.01f)
+            {
+                waypointIndex = (waypointIndex * 1) % waypoints.Length;
             }
 
             Vector2 actualMovement = position - oldPosition;

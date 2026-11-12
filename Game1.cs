@@ -78,13 +78,13 @@ namespace CollisionDetectionExample
 
             //enemies.Add(enemy);
 
-            Enemy CreateEnemy(Vector2 position, EnemyMovementType movementType, Color tint)
+            Enemy CreateEnemy(Vector2 position, EnemyMovementType movementType, Color tint, Vector2[]waypoints = null)
             {
                 return new Enemy(position,
                 new SpriteAnimation(idleSheet, 48, 48, 0, 10, 8f),
                 new SpriteAnimation(runSheet, 48, 48, 0, 8, 8f),
                 new SpriteAnimation(deathSheet, 48, 48, 0, 10, 10f, loop: false),
-                hitsToKill: 3, movementType: movementType)
+                hitsToKill: 3, movementType: movementType, waypoints:waypoints)
                 {
                     Tint = tint,
                     Speed = 85f,
@@ -101,8 +101,19 @@ namespace CollisionDetectionExample
             enemies.Add(patrol);
 
             //Create Chase Enemy
-            Enemy chase = CreateEnemy(new Vector2(300, 250), EnemyMovementType.Chase, Color.Orange);
+            Enemy chase = CreateEnemy(new Vector2(300, 260), EnemyMovementType.Chase, Color.Orange);
             enemies.Add(chase);
+
+            //Create Waypoint Enemy
+            Enemy waypoint = CreateEnemy(new Vector2(500, 300), EnemyMovementType.Waypoints, Color.Violet, new Vector2[]
+            {
+                new Vector2(500,300),
+                new Vector2(700,300),
+                new Vector2(700,400),
+                new Vector2(500,400),
+            });
+
+            enemies.Add(waypoint);
 
             //spawner = new EnemySpawner(idleSheet, runSheet, deathSheet)
             //{
